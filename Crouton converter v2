@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Converter</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Apply Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+            @apply bg-gray-950 text-gray-100; /* Hacker-like background and text color */
+        }
+        /* Custom scrollbar for textareas */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #2d3748; /* Darker track */
+            border-radius: 10px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #48bb78; /* Greenish thumb */
+            border-radius: 10px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #38a169; /* Darker green on hover */
+        }
+        /* Basic button styles with shadow and rounded corners */
+        .btn {
+            @apply px-6 py-3 rounded-xl shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105;
+        }
+        /* Convert button specific styles */
+        .btn-convert {
+            @apply bg-green-700 text-white hover:bg-green-600; /* Green primary button */
+        }
+        .btn-convert:hover {
+            box-shadow: 0 8px 25px rgba(52, 211, 153, 0.5); /* Green glow */
+        }
+        /* Go Back button specific styles */
+        .btn-go-back {
+            @apply bg-gray-700 text-white hover:bg-gray-600; /* Darker grey with white text */
+        }
+        .btn-go-back:hover {
+            box-shadow: 0 8px 25px rgba(107, 114, 128, 0.5); /* Gray glow */
+        }
+        /* Skip button specific styles */
+        .btn-skip {
+            @apply bg-red-700 text-white hover:bg-red-600; /* Red for skip/stop */
+            position: absolute; /* Position relative to animation-content */
+            bottom: 20px; /* Adjust as needed */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100; /* Ensure it's on top */
+        }
+        /* Links button specific styles */
+        .btn-links {
+            @apply bg-blue-700 text-white hover:bg-blue-600; /* Blue for links button */
+        }
+        .btn-links:hover {
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5); /* Blue glow */
+        }
+        /* Main content container */
+        #mainContent {
+            @apply bg-gray-900 border border-green-600; /* Darker background, green border */
+        }
+        /* Textarea styles */
+        textarea {
+            @apply bg-gray-800 text-gray-200 border-green-700 focus:ring-green-400; /* Darker input areas, light gray text */
+            font-family: 'monospace'; /* Hacker font */
+        }
+        /* Animation specific styles for the text display */
+        .processing-text {
+            @apply text-white font-mono text-xl md:text-3xl lg:text-4xl text-center break-all max-w-2xl px-4 py-8 rounded-lg bg-gray-900 shadow-xl overflow-hidden mb-8 min-h-[150px] flex items-center justify-center border border-green-600; /* Solid background, white text */
+            z-index: 10;
+        }
+        .current-segment-text {
+            @apply text-white text-lg md:text-xl font-mono mt-2 mb-4 relative z-10; /* White text */
+        }
+        /* Results display text area */
+        .results-display {
+            @apply bg-gray-800 text-gray-200 border-green-700; /* Consistent styling */
+            font-family: 'monospace'; /* Hacker font */
+            min-height: 250px;
+        }
+        /* Overlay container */
+        #animationOverlay, #linksOverlay, #resultsOverlay {
+            @apply bg-gray-950 bg-opacity-95; /* Solid dark background with opacity */
+        }
+        /* Content within overlay */
+        .animation-content {
+            position: relative; /* Needed for positioning skip button */
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+        .links-content {
+            @apply bg-gray-900 p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-2xl text-center border border-green-600;
+        }
+        .links-content a {
+            @apply text-green-400 hover:text-green-300 underline block mb-2;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Content Container -->
+    <div id="mainContent" class="p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-4xl transform transition-all duration-300 ease-in-out hover:shadow-3xl">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-center mb-8 tracking-tight">
+            Crouton Converter
+        </h1>
+
+        <div class="mb-6">
+            <label for="inputText" class="block text-lg font-semibold mb-2">Input Text:</label>
+            <textarea id="inputText" rows="6" class="w-full p-4 border-2 rounded-xl focus:outline-none focus:ring-4 transition-all duration-200 text-base resize-y"></textarea>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
+            <button id="convertBtn" class="btn btn-convert">Convert</button>
+            <button id="linksBtn" class="btn btn-links">Links</button>
+        </div>
+
+        <p class="text-sm text-center mt-8">
+            Language concept by croutonz, Website by Gemini 2.5 Flash.
+        </p>
+    </div>
+
+    <!-- Animation Overlay -->
+    <div id="animationOverlay" class="fixed inset-0 flex flex-col items-center justify-center z-50 hidden">
+        <div class="animation-content">
+            <div class="processing-text">
+                <span id="animatedDisplay"></span>
+            </div>
+            <p id="animationMessage" class="text-3xl md:text-4xl font-bold mt-4 tracking-wider">
+                Processing...
+            </p>
+            <p id="currentSegmentDisplay" class="current-segment-text">
+            </p>
+            <button id="skipBtn" class="btn btn-skip">Skip</button>
+        </div>
+    </div>
+
+    <!-- Results Overlay -->
+    <div id="resultsOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-95 flex flex-col items-center justify-center z-50 hidden p-4">
+        <h2 id="resultsTitle" class="text-white text-4xl md:text-5xl font-extrabold text-center mb-8">Conversion Complete!</h2>
+        <textarea id="finalOutputDisplay" readonly class="results-display"></textarea>
+        <button id="goBackBtn" class="btn btn-go-back mt-8">Go Back</button>
+    </div>
+
+    <!-- Links Overlay -->
+    <div id="linksOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-95 flex flex-col items-center justify-center z-50 hidden p-4">
+        <div class="links-content">
+            <h2 class="text-white text-4xl md:text-5xl font-extrabold text-center mb-8">Links</h2>
+            <p class="text-lg mb-4">You can find my personal and Gemini links here:</p>
+            <p><a href="https://shorturl.at/41K1D" target="_blank" rel="noopener noreferrer">Gemini Canvas</a></p>
+            <p><a href="https://shorturl.at/OJH2E" target="_blank" rel="noopener noreferrer">Original Gemini Chat</a></p>
+            <button id="linksGoBackBtn" class="btn btn-go-back mt-8">Go Back</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const mainContent = document.getElementById('mainContent');
+        const inputTextElement = document.getElementById('inputText');
+        const convertBtn = document.getElementById('convertBtn');
+        const linksBtn = document.getElementById('linksBtn'); 
+        
+        // --- Animation Elements ---
+        const animationOverlay = document.getElementById('animationOverlay');
+        const animatedDisplay = document.getElementById('animatedDisplay');
+        const currentSegmentDisplay = document.getElementById('currentSegmentDisplay');
+        const animationMessage = document.getElementById('animationMessage');
+        const skipBtn = document.getElementById('skipBtn');
+
+        // --- Results Elements ---
+        const resultsOverlay = document.getElementById('resultsOverlay');
+        const resultsTitle = document.getElementById('resultsTitle');
+        const finalOutputDisplay = document.getElementById('finalOutputDisplay');
+        const goBackBtn = document.getElementById('goBackBtn');
+
+        // --- Links Elements ---
+        const linksOverlay = document.getElementById('linksOverlay'); 
+        const linksGoBackBtn = document.getElementById('linksGoBackBtn'); 
+
+        // --- Configuration (Original Speeds) ---
+        const ORIGINAL_DECODING_DELAY_MS = 75; 
+        const ORIGINAL_ENCODING_DELAY_MS = 5; 
+        const ORIGINAL_CYCLING_ITERATIONS = 12; 
+        const ORIGINAL_CYCLE_FLICKER_DELAY_MS = 20; 
+
+        const FINISHED_MESSAGE_DURATION = 1500; 
+
+        // --- Mutable Speed Variables ---
+        let currentDecodingDelay = ORIGINAL_DECODING_DELAY_MS;
+        let currentEncodingDelay = ORIGINAL_ENCODING_DELAY_MS;
+        let currentCyclingIterations = ORIGINAL_CYCLING_ITERATIONS;
+        let currentCycleFlickerDelay = ORIGINAL_CYCLE_FLICKER_DELAY_MS;
+
+        let animationWasSkipped = false; 
+
+        // --- Utility Functions ---
+
+        /**
+         * Resets animation speed variables to their original values.
+         */
+        function resetAnimationSpeed() {
+            currentDecodingDelay = ORIGINAL_DECODING_DELAY_MS;
+            currentEncodingDelay = ORIGINAL_ENCODING_DELAY_MS;
+            currentCyclingIterations = ORIGINAL_CYCLING_ITERATIONS;
+            currentCycleFlickerDelay = ORIGINAL_CYCLE_FLICKER_DELAY_MS;
+            animationWasSkipped = false;
+        }
+
+        /**
+         * Generates a random lowercase letter string of a given length with no repeating characters.
+         * @param {number} length - The desired length of the string.
+         * @returns {string} A random non-repeating lowercase letter string.
+         */
+        function generateRandomString(length) {
+            const characters = 'abcdefghijklmnopqrstuvwxyz';
+            let result = '';
+            let charactersArray = characters.split('');
+            for (let i = 0; i < length; i++) {
+                if (charactersArray.length === 0) {
+                    charactersArray = characters.split('');
+                }
+                const randomIndex = Math.floor(Math.random() * charactersArray.length);
+                result += charactersArray[randomIndex];
+                charactersArray.splice(randomIndex, 1);
+            }
+            return result;
+        }
+
+        /**
+         * Determines if the input text appears to be in the custom encoded language.
+         * @param {string} text - The input text to check.
+         * @returns {boolean} True if the text appears encoded, false otherwise.
+         */
+        function isEncodedPattern(text) {
+            const segments = text.trim().split(' ');
+            for (const segment of segments) {
+                let cleanSegment = segment;
+                if (segment.startsWith('[') && segment.endsWith(']')) {
+                    cleanSegment = segment.substring(1, cleanSegment.length - 1);
+                }
+                if (cleanSegment.match(/^\d+.+$/)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // --- Encoding Logic ---
+
+        /**
+         * Encodes a single character into the custom language format.
+         * @param {string} char - The character to encode.
+         * @returns {string} The encoded segment.
+         */
+        function encodeCharacter(char) {
+            const isCapital = char === char.toUpperCase() && char.match(/[a-zA-Z]/);
+            const targetCharLower = char.toLowerCase();
+
+            if (!targetCharLower.match(/[a-z0-9]/)) {
+                const strLength = Math.floor(Math.random() * 3) + 5;
+                const randomString = generateRandomString(strLength);
+                const position = Math.floor(Math.random() * strLength) + 1;
+                const stringArray = randomString.split('');
+                stringArray[strLength - position] = targetCharLower;
+                const encodedSegment = position + stringArray.join('');
+                return isCapital ? `[${encodedSegment}]` : encodedSegment;
+            }
+
+            const strLength = Math.floor(Math.random() * 3) + 5;
+            let randomString = generateRandomString(strLength);
+            while (randomString.includes(targetCharLower)) {
+                randomString = generateRandomString(strLength);
+            }
+
+            const position = Math.floor(Math.random() * strLength) + 1;
+            const stringArray = randomString.split('');
+            stringArray[strLength - position] = targetCharLower;
+
+            const encodedSegment = position + stringArray.join('');
+            return isCapital ? `[${encodedSegment}]` : encodedSegment;
+        }
+
+        /**
+         * Encodes the entire input text with a visual animation.
+         * @param {string} text - The text to encode.
+         */
+        async function encodeTextWithAnimation(text) {
+            animationMessage.textContent = 'Encoding...';
+            animatedDisplay.innerHTML = '';
+            currentSegmentDisplay.textContent = '';
+
+            let encodedResult = [];
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                let encodedSegment;
+
+                // Pre-compute the segment
+                if (char === ' ') {
+                    const spaceStrLength = Math.floor(Math.random() * 2) + 6;
+                    encodedSegment = generateRandomString(spaceStrLength);
+                } else {
+                    encodedSegment = encodeCharacter(char);
+                }
+
+                // If animation was skipped, just add the segment and continue quickly
+                if (animationWasSkipped) {
+                    encodedResult.push(encodedSegment);
+                    continue; // Skip animation part
+                }
+
+                currentSegmentDisplay.textContent = `Original: '${char}'`;
+                let currentAnimatedPrefix = encodedResult.join(' '); 
+                if (currentAnimatedPrefix.length > 0 && currentAnimatedPrefix[currentAnimatedPrefix.length - 1] !== ' ' && encodedSegment.trim() !== '') {
+                    currentAnimatedPrefix += ' ';
+                }
+
+                for (let k = 0; k < currentCyclingIterations; k++) {
+                    const tempRandom = generateRandomString(encodedSegment.length);
+                    animatedDisplay.textContent = currentAnimatedPrefix + tempRandom;
+                    await new Promise(resolve => setTimeout(resolve, currentCycleFlickerDelay));
+                }
+
+                encodedResult.push(encodedSegment);
+                animatedDisplay.textContent = encodedResult.join(' ');
+                await new Promise(resolve => setTimeout(resolve, currentEncodingDelay));
+            }
+            return encodedResult.join(' ');
+        }
+
+        // --- Decoding Logic ---
+
+        /**
+         * Decodes a single segment of the custom language.
+         * @param {string} segment - The segment to decode.
+         * @returns {string} The decoded character or space.
+         */
+        function decodeSegment(segment) {
+            const isCapital = segment.startsWith('[') && segment.endsWith(']');
+            let cleanSegment = segment;
+            if (isCapital) {
+                cleanSegment = segment.substring(1, cleanSegment.length - 1);
+            }
+
+            if (!cleanSegment.match(/^\d/)) { // Space segment
+                return ' ';
+            }
+
+            const match = cleanSegment.match(/^(\d+)(.*)$/);
+            if (!match) {
+                console.error(`Malformed segment during decoding: ${segment}`);
+                return '';
+            }
+
+            const position = parseInt(match[1], 10);
+            const charString = match[2];
+
+            if (position <= 0 || position > charString.length) {
+                console.error(`Decoding error: Position ${position} out of bounds for string "${charString}" in segment "${segment}"`);
+                return '';
+            }
+
+            const decodedChar = charString[charString.length - position];
+            return isCapital ? decodedChar.toUpperCase() : decodedChar;
+        }
+
+        /**
+         * Decodes the entire input text with a fullscreen, cycling animation.
+         * @param {string} text - The text to decode.
+         */
+        async function decodeTextWithAnimation(text) {
+            animationMessage.textContent = 'Decoding...';
+            animatedDisplay.innerHTML = '';
+            currentSegmentDisplay.textContent = '';
+
+            const segments = text.split(' ');
+            let decodedResult = [];
+
+            for (let i = 0; i < segments.length; i++) {
+                const segment = segments[i];
+                let decodedChar = decodeSegment(segment); // Pre-compute
+
+                // If animation was skipped, just add the decoded char and continue quickly
+                if (animationWasSkipped) {
+                    decodedResult.push(decodedChar);
+                    continue; // Skip animation part
+                }
+
+                currentSegmentDisplay.textContent = `Current Segment: "${segment}"`;
+
+                let currentAnimatedPrefix = decodedResult.join(''); 
+                if (currentAnimatedPrefix.length > 0 && currentAnimatedPrefix[currentAnimatedPrefix.length - 1] !== ' ' && segment.trim() !== '') {
+                    currentAnimatedPrefix += ' ';
+                }
+
+                for (let k = 0; k < currentCyclingIterations; k++) {
+                    const tempRandom = generateRandomString(segment.length);
+                    animatedDisplay.textContent = currentAnimatedPrefix + tempRandom;
+                    await new Promise(resolve => setTimeout(resolve, currentCycleFlickerDelay));
+                }
+
+                decodedResult.push(decodedChar); 
+                
+                animatedDisplay.textContent = decodedResult.join(''); 
+                
+                await new Promise(resolve => setTimeout(resolve, currentDecodingDelay));
+            }
+            return decodedResult.join('').replace(/\s+/g, ' ').trim();
+        }
+
+        // --- Screen Management ---
+
+        /**
+         * Shows the animation overlay and hides other screens.
+         */
+        function showAnimationScreen() {
+            mainContent.classList.add('hidden');
+            resultsOverlay.classList.add('hidden');
+            linksOverlay.classList.add('hidden'); // Hide links overlay
+            animationOverlay.classList.remove('hidden');
+            resetAnimationSpeed(); // Ensure original speed at start of animation
+        }
+
+        /**
+         * Shows the results overlay and hides other screens.
+         * @param {string} resultText - The text to display on the results screen.
+         * @param {string} conversionType - 'Encoded' or 'Decoded'.
+         */
+        function showResultsScreen(resultText, conversionType) {
+            mainContent.classList.add('hidden');
+            animationOverlay.classList.add('hidden');
+            linksOverlay.classList.add('hidden'); // Hide links overlay
+            resultsOverlay.classList.remove('hidden');
+            
+            resultsTitle.textContent = `Conversion Complete!`; // Always "Conversion Complete!"
+            finalOutputDisplay.value = resultText;
+        }
+
+        /**
+         * Shows the links overlay and hides other screens.
+         */
+        function showLinksScreen() {
+            mainContent.classList.add('hidden');
+            animationOverlay.classList.add('hidden');
+            resultsOverlay.classList.add('hidden');
+            linksOverlay.classList.remove('hidden');
+        }
+
+        /**
+         * Shows the main content screen and hides other overlays.
+         */
+        function showMainScreen() {
+            animationOverlay.classList.add('hidden');
+            resultsOverlay.classList.add('hidden');
+            linksOverlay.classList.add('hidden'); // Hide links overlay
+            mainContent.classList.remove('hidden');
+            inputTextElement.value = "Hello World!"; // Reset example text
+            inputTextElement.focus();
+            resetAnimationSpeed(); // Reset speed when returning to main screen
+        }
+
+        // --- Event Listeners ---
+
+        convertBtn.addEventListener('click', async () => {
+            const text = inputTextElement.value.trim();
+            if (text === '') {
+                showAnimationScreen();
+                animationMessage.textContent = 'Input is empty!';
+                currentSegmentDisplay.textContent = 'Please type something first.';
+                await new Promise(resolve => setTimeout(resolve, FINISHED_MESSAGE_DURATION));
+                showMainScreen();
+                return;
+            }
+
+            showAnimationScreen();
+
+            let finalResult = '';
+            let conversionType = '';
+            let conversionError = null; 
+
+            try {
+                if (isEncodedPattern(text)) {
+                    finalResult = await decodeTextWithAnimation(text);
+                    conversionType = 'Decoded';
+                } else {
+                    finalResult = await encodeTextWithAnimation(text);
+                    conversionType = 'Encoded';
+                }
+            } catch (error) {
+                conversionError = error;
+                console.error("Conversion error:", error);
+            }
+
+            // After conversion (normal or skipped), prepare and show results
+            if (conversionError) {
+                animationMessage.textContent = `Conversion Error!`;
+                currentSegmentDisplay.textContent = `An error occurred: ${error.message.substring(0, 70)}...`;
+                await new Promise(resolve => setTimeout(resolve, FINISHED_MESSAGE_DURATION)); // Show error message briefly
+                showMainScreen(); // Go back to main screen after error
+            } else {
+                if (animationWasSkipped) {
+                    animationMessage.textContent = `Skipped!`; 
+                    currentSegmentDisplay.textContent = 'Results ready!';
+                } else {
+                    animationMessage.textContent = `Complete!`; 
+                    currentSegmentDisplay.textContent = 'Transitioning to results...';
+                }
+                await new Promise(resolve => setTimeout(resolve, FINISHED_MESSAGE_DURATION)); // Short pause before showing results
+                showResultsScreen(finalResult, conversionType);
+            }
+        });
+
+        skipBtn.addEventListener('click', () => {
+            animationWasSkipped = true; // Mark as skipped
+            // Increase speed by 500% (divide delay by 5) for all relevant animation parameters
+            currentDecodingDelay = ORIGINAL_DECODING_DELAY_MS / 5;
+            currentEncodingDelay = ORIGINAL_ENCODING_DELAY_MS / 5;
+            currentCyclingIterations = Math.max(1, Math.floor(ORIGINAL_CYCLING_ITERATIONS / 5)); // Reduce iterations too, but minimum 1
+            currentCycleFlickerDelay = ORIGINAL_CYCLE_FLICKER_DELAY_MS / 5;
+            animationMessage.textContent = "Skipping..."; // Update message
+            currentSegmentDisplay.textContent = "Speeding up...";
+        });
+
+        linksBtn.addEventListener('click', () => { 
+            showLinksScreen();
+        });
+
+        linksGoBackBtn.addEventListener('click', () => { 
+            showMainScreen();
+        });
+
+        // Initialize with example text and show main screen on load
+        window.onload = () => {
+            inputTextElement.value = "";
+            showMainScreen();
+        };
+
+    </script>
+</body>
+</html>
